@@ -129,13 +129,16 @@ class Voxelizer:
 
 
 if __name__ == '__main__':
+    import matplotlib.pyplot as plt
     ti.init(arch=ti.cpu)
-    n = 256
+    n = 128
     vox = Voxelizer((n, n, n), 1.0 / n)
     triangles = np.array([[0.1, 0.1, 0.1, 0.6, 0.2, 0.1, 0.5, 0.7,
                            0.7]]).astype(np.float32)
     #triangles = np.fromfile('triangles.npy', dtype=np.float32)
     #triangles = np.reshape(triangles, (len(triangles) // 9, 9)) * 0.306 + 0.501
+    triangles = np.load('../2d_mesh_tetra.npy')
+
     offsets = [0.0, 0.0, 0.0]
     for i in range(9):
         triangles[:, i] += offsets[i % 3]

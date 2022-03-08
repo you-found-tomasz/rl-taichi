@@ -15,11 +15,14 @@ write_to_disk = False
 #ti.init(arch=ti.gpu, device_memory_GB=4.0)
 #ti.init(arch=ti.gpu, device_memory_fraction=0.9)
 #ti.init(arch=ti.vulkan)
-ti.init(arch=ti.cpu)
+ti.init(arch=ti.cpu, cpu_max_num_threads=1)
 
-triangles = np.load('2d_mesh2.npy')
+triangles2 = np.load('2d_mesh_tetra.npy')* 0.0106 + 0.501
+triangles = np.fromfile('suzanne.npy', dtype=np.float32)
+triangles = np.reshape(triangles, (len(triangles) // 9, 9)) * 0.306 + 0.501
+triangles = np.array([[0.1, 0.1, 0.1, 0.6, 0.2, 0.1, 0.5, 0.7, 0.7]]).astype(np.float32)
 
-mpm = MPMSolver(res=(64, 64, 64), size=10, max_num_particles=2 ** 15, use_ggui=True)
+mpm = MPMSolver(res=(64, 64, 64), size=10, max_num_particles=2 ** 9, use_ggui=True)
 mpm.add_mesh(triangles=triangles, material=MPMSolver.material_elastic, color=0xFFFF00)
 mpm.add_sphere_collider_inv(center=(2.5, 4, 2.5),
                         radius=2,
@@ -28,7 +31,10 @@ mpm.add_sphere_collider_inv(center=(2.5, 4, 2.5),
 
 mpm.set_gravity((0, -50, 0))
 particles = mpm.particle_info()
-
+np_x = np.ndarray((mpm.n_particles[None], mpm.dim), dtype=np.float32)
+hello = (mpm.n_particles[None], mpm.dim)
+print(mpm.x.shape)
+mpm.x = 0
 
 @ti.kernel
 def set_color(ti_color: ti.template(), material_color: ti.ext_arr(), ti_material: ti.template()):

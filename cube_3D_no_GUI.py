@@ -3,6 +3,16 @@ import taichi as ti
 import numpy as np
 from engine.mpm_solver import MPMSolver
 import os
+import optimesh
+import dmsh
+
+
+geo = dmsh.Circle([2.5, 2.5], 1)
+X, cells = dmsh.generate(geo, 0.05)
+
+# optionally optimize the mesh
+X, cells = optimesh.optimize_points_cells(X, cells, "CVT (full)", 1.0e-10, 100)
+
 
 # Try to run on GPU
 #ti.init(arch=ti.gpu, device_memory_GB=4.0)
@@ -12,15 +22,16 @@ write_to_disk = False
 ti.init(arch=ti.cpu)
 gui = ti.GUI("Taichi Elements", res=512, background_color=0x112F41)
 
-mpm = MPMSolver(res=(64, 64, 64), size=10, max_num_particles=2 ** 15, use_ggui=True)
-mpm.add_cube(lower_corner=[0, 4, 0],
-             cube_size=[5, 0.01, 5],
-             material=MPMSolver.material_elastic,
-             sample_density=64)
+mpm = MPMSolver(res=(64, 64, 64), size=10, max_num_particles=2 ** 15, use_ggui=False)
 mpm.add_sphere_collider_inv(center=(2.5, 4, 2.5),
-                        radius=2,
+                        radius=1,
                         surface=mpm.surface_sticky)
 mpm.set_gravity((0, -150, 0))
+particles = np.array([X[:,0], np.ones(len(X))*4, X[:,1]]).T
+#particles_reduced = np.delete(particles, np.arange(0, particles.shape[0], 2), axis=0)
+particles_reduced = particles[:int(3*particles.shape[0]/4),:]
+
+mpm.add_particles(particles=particles_reduced,material=MPMSolver.material_elastic)
 particles = mpm.particle_info()
 
 min_list = list()
