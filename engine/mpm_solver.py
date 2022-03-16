@@ -817,7 +817,7 @@ class MPMSolver:
             print(f'needed substeps: {substeps}')
 
         while frame_time_left > 0:
-            print('.', end='', flush=True)
+            #print('.', end='', flush=True)
             self.total_substeps += 1
             if self.use_adaptive_dt:
                 if self.use_g2p2g:
@@ -864,7 +864,7 @@ class MPMSolver:
             self.all_time_max_velocity = max(self.all_time_max_velocity,
                                              cur_frame_velocity)
 
-        print()
+        #print()
 
         if print_stat:
             ti.print_kernel_profile_info()

@@ -2,6 +2,7 @@
 # encoding: utf-8
 
 from gym_example.envs.example_env import Example_v0
+from gym_example.envs.fail1 import Fail_v1
 from ray.tune.registry import register_env
 import gym
 import os
@@ -9,9 +10,8 @@ import ray
 import ray.rllib.agents.ppo as ppo
 import shutil
 
-#https://medium.com/distributed-computing-with-ray/anatomy-of-a-custom-environment-for-rllib-327157f269e5
 
-def main():
+def main ():
     # init directory in which to save checkpoints
     chkpt_root = "tmp/exa"
     shutil.rmtree(chkpt_root, ignore_errors=True, onerror=None)
@@ -33,7 +33,6 @@ def main():
 
     # configure the environment and create agent
     config = ppo.DEFAULT_CONFIG.copy()
-    #config["framework"] = "torch"
     config["log_level"] = "WARN"
     agent = ppo.PPOTrainer(config, env=select_env)
 
@@ -67,7 +66,7 @@ def main():
 
     state = env.reset()
     sum_reward = 0
-    n_step = 50
+    n_step = 20
 
     for step in range(n_step):
         action = agent.compute_action(state)

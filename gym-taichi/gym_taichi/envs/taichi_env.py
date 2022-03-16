@@ -1,37 +1,49 @@
 import gym
-import numpy as np
-from gym import spaces
 from gym.utils import seeding
-
-# aim to hit the target at 45°
-HI_ANGLE = 60.0
-LO_ANGLE = 20.0
+import numpy as np
+from particle_simulator_wrapper import Particle_Simulator
 
 
-class Fail_v1 (gym.Env):
-    metadata = {"render.modes": ["human"]}
-    reward_range = (-10.0, 90.0)
+class Taichi_v0 (gym.Env):
+    # possible actions
+    MOVE_LF = 0
+    MOVE_RT = 1
+
+    # possible positions
+    LF_MIN = 1
+    RT_MAX = 10
+
+    # land on the GOAL position within MAX_STEPS steps
+    MAX_STEPS = 500
+
+    # possible rewards
+    REWARD_AWAY = -2
+    REWARD_STEP = -1
+    REWARD_GOAL = MAX_STEPS
+
+    metadata = {
+        "render.modes": ["human"]
+        }
 
 
     def __init__ (self):
-        # NB: the Box bounds for `action_space` must range [-1.0, 1.0]
-        # or sampling breaks during rollout
-        lo = np.float32(40)
-        hi = np.float32(50)
+        # the action space ranges [0, 1] where:
+        #  `0` move left
+        #  `1` move right
+        self.simulator = Particle_Simulator()
+        self.RT_MAX = int(self.simulator.first_quarter_index.shape[0])
+        self.action_space = gym.spaces.Discrete(self.RT_MAX)
 
-        self.action_space = spaces.Box(
-            lo,
-            hi,
-            shape=(1,)
-            )
+        # NB: Ray throws exceptions for any `0` value Discrete
+        # observations so we'll make position a 1's based value
+        #self.observation_space = gym.spaces.Discrete(self.RT_MAX)
+        self.observation_space = gym.spaces.MultiBinary(self.RT_MAX)
+        #self.observation_space = gym.spaces.Box(low=0, high=1, shape=(self.RT_MAX, 1), dtype=np.int)
+        #self.observation_space = gym.spaces.Tuple((gym.spaces.Discrete(self.RT_MAX), gym.spaces.MultiBinary(self.RT_MAX, 1)))
 
-        self.observation_space = spaces.Box(
-            0.0,
-            1.0,
-            shape=(1,)
-            )
-
-        self.np_random = None
+        # possible positions to chose on `reset()`
+        self.goal = int((self.LF_MIN + self.RT_MAX - 1) / 2)
+        self.seed()
         self.reset()
 
 
@@ -43,16 +55,15 @@ class Fail_v1 (gym.Env):
         -------
         observation (object): the initial observation of the space.
         """
-        self.seed()
+        self.count = 0
+        self.state = np.ones(self.RT_MAX)
 
-        pos = self.np_random.random()
-        self.state = [ pos ]
-
-        self.reward = -100.0
+        # for this environment, state is simply the position
+        self.reward = 0
         self.done = False
         self.info = {}
 
-        return self.observation_space.sample()
+        return self.state
 
 
     def step (self, action):
@@ -61,7 +72,7 @@ class Fail_v1 (gym.Env):
 
         Parameters
         ----------
-        action : array[float]
+        action : Discrete
 
         Returns
         -------
@@ -89,33 +100,28 @@ class Fail_v1 (gym.Env):
                  use this for learning.
         """
         if self.done:
-            print("episode done")
-            return [self.state, self.reward, self.done, self.info]
+            # code should never reach this point
+            print("EPISODE DONE!!!")
+
+        elif self.count == self.MAX_STEPS:
+            self.done = True;
 
         else:
             assert self.action_space.contains(action)
+            self.count += 1
 
-            degree = float(action[0])
-            last_pos = self.state[0]
+            self.state[action] = 0
+            if self.count %50 == 0:
+                self.simulator.simulate(self.state)
+                if self.simulator.cloth_broken == False:
+                    self.reward = 1
+            self.info["dist"] = self.goal
+            self.info["cloth"] = self.simulator.cloth_broken
 
-            ## TODO: cal `pos`
-
-            pos = np.sin(np.deg2rad(degree))
-            miss = abs(pos - np.sin(np.deg2rad(45.0)))
-
-            self.state[0] = round(pos, 4)
-            self.info["action"] = round(degree, 4)
-            self.info["miss"] = round(miss, 4)
-
-            self.render()
-
-        if miss <= 0.01:
-            # good enough
-            self.reward = 90.0
-            self.done = True;
-        else:
-            # reward is the "nearness" of the blast destroying the target
-            self.reward = round(-90.0 * miss)
+        try:
+            assert self.observation_space.contains(self.state)
+        except AssertionError:
+            print("INVALID STATE", self.state)
 
         return [self.state, self.reward, self.done, self.info]
 
@@ -144,7 +150,10 @@ class Fail_v1 (gym.Env):
         Args:
             mode (str): the mode to render with
         """
-        print("location:", self.state, self.reward, self.done, self.info)
+        #s = "position: {:2d}  reward: {:2d}  info: {}"
+        #print(s.format(self.state, self.reward, self.info))
+        print(self.state.sum(), self.reward)
+
 
 
     def seed (self, seed=None):
