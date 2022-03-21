@@ -13,13 +13,9 @@ class Taichi_v0 (gym.Env):
     LF_MIN = 1
     RT_MAX = 10
 
-    # land on the GOAL position within MAX_STEPS steps
-    MAX_STEPS = 500
-
     # possible rewards
     REWARD_AWAY = -2
     REWARD_STEP = -1
-    REWARD_GOAL = MAX_STEPS
 
     metadata = {
         "render.modes": ["human"]
@@ -62,7 +58,7 @@ class Taichi_v0 (gym.Env):
         self.reward = 0
         self.done = False
         self.info = {}
-
+        print("reset")
         return self.state
 
 
@@ -103,18 +99,19 @@ class Taichi_v0 (gym.Env):
             # code should never reach this point
             print("EPISODE DONE!!!")
 
-        elif self.count == self.MAX_STEPS:
+        elif self.simulator.cloth_broken == True:
             self.done = True;
-
+            self.simulator.cloth_broken = False
+            print("cloth broken")
         else:
             assert self.action_space.contains(action)
             self.count += 1
 
             self.state[action] = 0
-            if self.count %50 == 0:
+            if self.count %75 == 0:
                 self.simulator.simulate(self.state)
                 if self.simulator.cloth_broken == False:
-                    self.reward = 1
+                    self.reward = int(self.state.shape[0] - self.state.sum())
             self.info["dist"] = self.goal
             self.info["cloth"] = self.simulator.cloth_broken
 
