@@ -16,6 +16,7 @@ class Taichi_v0 (gym.Env):
     # possible rewards
     REWARD_AWAY = -2
     REWARD_STEP = -1
+    STEPS_UNTIL_SIMULATION = 10
 
     metadata = {
         "render.modes": ["human"]
@@ -108,7 +109,7 @@ class Taichi_v0 (gym.Env):
             self.count += 1
 
             self.state[action] = 0
-            if self.count %75 == 0:
+            if self.count %self.STEPS_UNTIL_SIMULATION == 0:
                 self.simulator.simulate(self.state)
                 if self.simulator.cloth_broken == False:
                     self.reward = int(self.state.shape[0] - self.state.sum())

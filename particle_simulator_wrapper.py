@@ -12,10 +12,10 @@ class Particle_Simulator:
 
     def __init__(self):
         self.center = [2.5, 2.5]
-        mesh_file = "2d_mesh_571.npy"
+        mesh_file = "2d_mesh_163.npy"
         if not exists(mesh_file):
             geo = dmsh.Circle(self.center, 1)
-            precision = 0.08
+            precision = 0.1
             self.X, cells = dmsh.generate(geo, precision)
             plt.scatter(self.X[:,0], self.X[:,1])
             plt.show()
@@ -45,6 +45,7 @@ class Particle_Simulator:
 
     def simulate(self, particle_indices):
 
+        #particle_indices = np.ones(particle_indices.shape[0])
         first_quarter = self.X[self.first_quarter_index,:]
         first_quarter_reduced = first_quarter[np.where(particle_indices)[0],:]
         second_quarter_reduced = -first_quarter_reduced + self.center + self.center
@@ -81,7 +82,7 @@ class Particle_Simulator:
                 self.gui.circles(screen_pos, radius=1, color=colors[particles['material']])
                 self.gui.show(f'{frame:06d}.png' if self.write_to_disk else None)
         print(f'  frame time {time.time() - begin_t:.3f} s')
-        '''
+
         plt.plot(np.asarray(min_list))
         plt.show()
         plt.scatter(first_quarter_reduced[:,0], first_quarter_reduced[:,1])
@@ -90,4 +91,3 @@ class Particle_Simulator:
         plt.scatter(forth_quarter_reduced[:,0], forth_quarter_reduced[:,1])
         plt.show()
         print("finished")
-        '''
