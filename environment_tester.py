@@ -9,16 +9,17 @@ env = gym.make(select_env)
 
 state = env.reset()
 sum_reward = 0
-n_step = 100
+n_step = 200
 #simulator = Particle_Simulator()
 #simulator.simulate([])
 #simulator.simulate([])
-
 
 for step in range(n_step):
     action = env.action_space.sample()
     state, reward, done, info = env.step(action)
     if info['cloth'] == True:
+        print("cloth broken")
+        state = env.reset()
         break
     sum_reward += reward
     env.render()
