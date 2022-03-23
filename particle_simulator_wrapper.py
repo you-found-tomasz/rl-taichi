@@ -12,10 +12,10 @@ class Particle_Simulator:
 
     def __init__(self):
         self.center = [2.5, 2.5]
-        mesh_file = "2d_mesh_163.npy"
+        mesh_file = "2d_mesh_301.npy"
         if not exists(mesh_file):
             geo = dmsh.Circle(self.center, 1)
-            precision = 0.1
+            precision = 0.11
             self.X, cells = dmsh.generate(geo, precision)
             plt.scatter(self.X[:,0], self.X[:,1])
             plt.show()
@@ -25,7 +25,7 @@ class Particle_Simulator:
             np.save("2d_mesh_{}.npy".format(self.X.shape[0]), self.X)
 
         self.X = np.load(mesh_file)
-        self.simulation_show = False
+        self.simulation_show = True
         self.cloth_broken = False
 
         X_centered = self.X - self.center
@@ -57,17 +57,17 @@ class Particle_Simulator:
         self.mpm.n_particles[None] = 0
         self.mpm.x.parent().deactivate_all()
         self.mpm.add_particles(particles=particles_reduced[:, :], material=MPMSolver.material_elastic)
-
+        self.mpm.add_ellipsoid(center=[2.5, 4.5, 2.5], radius=0.25, material=MPMSolver.material_elastic, velocity=[0, -30, 0])
         min_list = list()
         begin_t = time.time()
-        for frame in range(150):
-            self.mpm.step(4e-3, print_stat=False)
+        for frame in range(300):
+            self.mpm.step(8e-3, print_stat=False)
             colors = np.array([0x068587, 0xED553B, 0xEEEEF0, 0xFFFF00], dtype=np.uint32)
             particles = self.mpm.particle_info()
             np_x = particles['position'] / 10.0
             min_z = np.min(np_x[:,1])
-            if min_z < 0.3:
-                #print(min_z)
+            if min_z < 0.28:
+                print(min_z)
                 self.cloth_broken = True
                 break
             min_list.append(min_z)
