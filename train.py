@@ -21,20 +21,33 @@ def main ():
 
 
     # start Ray -- add `local_mode=True` here for debugging
-    ray.init(ignore_reinit_error=True, include_dashboard=True, logging_level=3)
+    ray.init(ignore_reinit_error=True, include_dashboard=True, logging_level=3, object_store_memory=78643200, _redis_max_memory=78643200, _memory=78643200, num_gpus=1)#, local_mode=True)
 
     # register the custom environment
     select_env = "taichi-v0"
     #select_env = "CartPole-v0"
     #select_env = "fail-v1"
     register_env(select_env, lambda config: Taichi_v0())
+    #register_env(select_env, lambda config: CartPole_v0())
     #register_env(select_env, lambda config: Fail_v1())
 
 
     # configure the environment and create agent
     config = ppo.DEFAULT_CONFIG.copy()
     config["log_level"] = "WARN"
-    config["num_workers"] = 1
+    config["num_cpus_per_worker"] = 1
+    config["num_workers"] = 4
+    config["framework"] = "tf"
+    config["train_batch_size"] = 4000
+    config["num_gpus"] = 0
+    config["num_gpus_per_worker"] = 0
+    #config["reuse_actors"] = True
+    config["output_max_file_size"] = 500000
+    #config["buffer_size"] = 10000
+    config["batch_mode"] = "truncate_episodes"
+    config["num_envs_per_worker"] = 1
+    config["ignore_worker_failures"] = True
+
     agent = ppo.PPOTrainer(config, env=select_env)
 
     status = "{:2d} reward {:6.2f}/{:6.2f}/{:6.2f} len {:4.2f} saved {}"
@@ -42,8 +55,15 @@ def main ():
 
     # train a policy with RLlib using PPO
     for n in range(n_iter):
-        result = agent.train()
-        chkpt_file = agent.save(chkpt_root)
+        if n == 0:
+            result = agent.train()
+            chkpt_file = agent.save(chkpt_root)
+        else:
+            agent = ppo.PPOTrainer(config, env=select_env)
+            agent.restore(chkpt_file)
+            result = agent.train()
+            chkpt_file = agent.save(chkpt_root)
+        agent.stop()
 
         print(status.format(
                 n + 1,
@@ -53,7 +73,6 @@ def main ():
                 result["episode_len_mean"],
                 chkpt_file
                 ))
-
 
     # examine the trained policy
     policy = agent.get_policy()
@@ -67,16 +86,16 @@ def main ():
 
     state = env.reset()
     sum_reward = 0
-    n_step = 2000
+    n_step = 10
 
     for step in range(n_step):
         action = agent.compute_action(state)
         state, reward, done, info = env.step(action)
         sum_reward += reward
-        env.render()
+        env.render(action)
 
         if info['cloth'] == True:
-            print("cloth broken")
+            #print("cloth broken")
             state = env.reset()
             break
 

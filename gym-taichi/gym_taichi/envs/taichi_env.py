@@ -2,7 +2,8 @@ import gym
 from gym.utils import seeding
 import numpy as np
 from particle_simulator_wrapper import Particle_Simulator
-
+import matplotlib.pyplot as plt
+import time
 
 class Taichi_v0 (gym.Env):
     # possible actions
@@ -16,7 +17,7 @@ class Taichi_v0 (gym.Env):
     # possible rewards
     REWARD_AWAY = -2
     REWARD_STEP = -1
-    STEPS_UNTIL_SIMULATION = 10
+    STEPS_UNTIL_SIMULATION = 200
 
     metadata = {
         "render.modes": ["human"]
@@ -59,6 +60,8 @@ class Taichi_v0 (gym.Env):
         self.reward = 0
         self.done = False
         self.info = {}
+        self.previous_state = self.state.shape[0]
+        self.previous_state_full = self.state
         print("reset")
         return self.state
 
@@ -103,7 +106,7 @@ class Taichi_v0 (gym.Env):
         elif self.simulator.cloth_broken == True:
             self.done = True;
             self.simulator.cloth_broken = False
-            print("cloth broken")
+            #print("cloth broken")
         else:
             assert self.action_space.contains(action)
             self.count += 1
@@ -112,9 +115,11 @@ class Taichi_v0 (gym.Env):
             if self.count %self.STEPS_UNTIL_SIMULATION == 0:
                 self.simulator.simulate(self.state)
                 if self.simulator.cloth_broken == False:
-                    self.reward = int(self.state.shape[0] - self.state.sum())
+                    self.reward = int(self.previous_state - self.state.sum())
+                    self.previous_state = self.state.sum()
             self.info["dist"] = self.goal
             self.info["cloth"] = self.simulator.cloth_broken
+            self.previous_state_full = self.state
 
         try:
             assert self.observation_space.contains(self.state)
@@ -124,7 +129,7 @@ class Taichi_v0 (gym.Env):
         return [self.state, self.reward, self.done, self.info]
 
 
-    def render (self, mode="human"):
+    def render (self, action, mode="human"):
         """Renders the environment.
 
         The set of supported modes varies per environment. (And some
@@ -148,8 +153,21 @@ class Taichi_v0 (gym.Env):
         Args:
             mode (str): the mode to render with
         """
+        first_quarter = self.simulator.X[self.simulator.first_quarter_index,:]
+        first_quarter_reduced = first_quarter[np.where(self.state)[0],:]
+        second_quarter_reduced = -first_quarter_reduced + self.simulator.center + self.simulator.center
+        third_quarter_reduced = np.array([first_quarter_reduced[:,0], -first_quarter_reduced[:,1] + self.simulator.center[1] + self.simulator.center[1]]).T
+        forth_quarter_reduced = np.array([-first_quarter_reduced[:,0] + self.simulator.center[1] + self.simulator.center[1], first_quarter_reduced[:,1]]).T
+        plt.scatter(first_quarter_reduced[:,0], first_quarter_reduced[:,1])
+        plt.scatter(second_quarter_reduced[:,0], second_quarter_reduced[:,1])
+        plt.scatter(third_quarter_reduced[:,0], third_quarter_reduced[:,1])
+        plt.scatter(forth_quarter_reduced[:,0], forth_quarter_reduced[:,1])
+        plt.savefig("results_meshes/mesh_{}.png".format(time.time()), dpi=150)
+        plt.clf()
+
         #s = "position: {:2d}  reward: {:2d}  info: {}"
         #print(s.format(self.state, self.reward, self.info))
+        #self.simulator.simulate(self.state)
         print(self.state.sum(), self.reward)
 
 

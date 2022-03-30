@@ -12,7 +12,7 @@ class Particle_Simulator:
 
     def __init__(self):
         self.center = [2.5, 2.5]
-        mesh_file = "2d_mesh_301.npy"
+        mesh_file = "2d_mesh_1015.npy"
         if not exists(mesh_file):
             geo = dmsh.Circle(self.center, 1)
             precision = 0.11
@@ -32,9 +32,10 @@ class Particle_Simulator:
         self.first_quarter_index = np.where(np.logical_and(X_centered[:,0] >= 0, X_centered[:,1] >= 0))[0]
 
         # Try to run on GPU
-        #ti.init(arch=ti.gpu, device_memory_GB=4.0)
+        #ti.init(arch=ti.gpu, device_memory_GB=2.0)
         #ti.init(arch=ti.gpu, device_memory_fraction=0.9)
         #ti.init(arch=ti.vulkan)
+        #ti.init(arch=ti.gpu, device_memory_fraction=0.35)
         self.write_to_disk = False
         ti.init(arch=ti.cpu, kernel_profiler = True, debug=True)
         self.gui = ti.GUI("Taichi Elements", res=512, background_color=0x112F41)
@@ -60,14 +61,14 @@ class Particle_Simulator:
         self.mpm.add_ellipsoid(center=[2.5, 4.5, 2.5], radius=0.25, material=MPMSolver.material_elastic, velocity=[0, -30, 0])
         min_list = list()
         begin_t = time.time()
-        for frame in range(300):
+        for frame in range(100):
             self.mpm.step(8e-3, print_stat=False)
             colors = np.array([0x068587, 0xED553B, 0xEEEEF0, 0xFFFF00], dtype=np.uint32)
             particles = self.mpm.particle_info()
             np_x = particles['position'] / 10.0
             min_z = np.min(np_x[:,1])
             if min_z < 0.28:
-                print(min_z)
+                #print(min_z)
                 self.cloth_broken = True
                 break
             min_list.append(min_z)
@@ -82,7 +83,7 @@ class Particle_Simulator:
                 self.gui.circles(screen_pos, radius=1, color=colors[particles['material']])
                 self.gui.show(f'{frame:06d}.png' if self.write_to_disk else None)
         print(f'  frame time {time.time() - begin_t:.3f} s')
-
+        '''
         plt.plot(np.asarray(min_list))
         plt.show()
         plt.scatter(first_quarter_reduced[:,0], first_quarter_reduced[:,1])
@@ -91,3 +92,4 @@ class Particle_Simulator:
         plt.scatter(forth_quarter_reduced[:,0], forth_quarter_reduced[:,1])
         plt.show()
         print("finished")
+        '''
