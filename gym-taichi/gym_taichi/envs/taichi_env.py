@@ -117,6 +117,8 @@ class Taichi_v0 (gym.Env):
                 if self.simulator.cloth_broken == False:
                     self.reward = int(self.previous_state - self.state.sum())
                     self.previous_state = self.state.sum()
+            else:
+                self.reward = 0
             self.info["dist"] = self.goal
             self.info["cloth"] = self.simulator.cloth_broken
             self.previous_state_full = self.state
@@ -168,7 +170,7 @@ class Taichi_v0 (gym.Env):
         #s = "position: {:2d}  reward: {:2d}  info: {}"
         #print(s.format(self.state, self.reward, self.info))
         #self.simulator.simulate(self.state)
-        print(self.state.sum(), self.reward)
+        #print(self.state.sum(), self.reward)
 
 
 
