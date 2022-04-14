@@ -1,0 +1,6 @@
+tensorflow
+taichi
+matplotlib
+tune[rllib]
+optimesh
+dm_tree
