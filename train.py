@@ -19,7 +19,6 @@ def main ():
     ray_results = "{}/ray_results/".format(os.getenv("HOME"))
     shutil.rmtree(ray_results, ignore_errors=True, onerror=None)
 
-
     # start Ray -- add `local_mode=True` here for debugging
     ray.init(ignore_reinit_error=True, include_dashboard=True, logging_level=3, object_store_memory=78643200, _redis_max_memory=78643200, _memory=78643200, num_gpus=1)#, local_mode=True)
 
@@ -36,7 +35,7 @@ def main ():
     config = ppo.DEFAULT_CONFIG.copy()
     config["log_level"] = "WARN"
     config["num_cpus_per_worker"] = 1
-    config["num_workers"] = 4
+    config["num_workers"] = 1
     config["framework"] = "tf"
     config["train_batch_size"] = 4000
     config["num_gpus"] = 0
@@ -51,7 +50,7 @@ def main ():
     agent = ppo.PPOTrainer(config, env=select_env)
 
     status = "{:2d} reward {:6.2f}/{:6.2f}/{:6.2f} len {:4.2f} saved {}"
-    n_iter = 1000
+    n_iter = 1
 
     # train a policy with RLlib using PPO
     for n in range(n_iter):
@@ -77,7 +76,7 @@ def main ():
     # examine the trained policy
     policy = agent.get_policy()
     model = policy.model
-    #print(model.base_model.summary())
+    print(model.summary())
 
 
     # apply the trained policy in a rollout

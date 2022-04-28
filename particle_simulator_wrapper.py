@@ -82,6 +82,7 @@ class Particle_Simulator:
 
                 self.gui.circles(screen_pos, radius=1, color=colors[particles['material']])
                 self.gui.show(f'{frame:06d}.png' if self.write_to_disk else None)
+
         print(f'  frame time {time.time() - begin_t:.3f} s')
         '''
         plt.plot(np.asarray(min_list))

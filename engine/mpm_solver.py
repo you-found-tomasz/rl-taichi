@@ -201,7 +201,7 @@ class MPMSolver:
         self.padding = padding
 
         # Young's modulus and Poisson's ratio
-        self.E, self.nu = 1e6 * size * E_scale, 0.2
+        self.E, self.nu = 1e7 * size * E_scale, 0.2  #self.E, self.nu = 1e6 * size * E_scale,  0.2
         # Lame parameters
         self.mu_0, self.lambda_0 = self.E / (
             2 * (1 + self.nu)), self.E * self.nu / ((1 + self.nu) *
@@ -637,8 +637,9 @@ class MPMSolver:
                 #offset_radius_2d = offset[0]*offset[0]+offset[1]*offset[1]
                 offset_radius_2d = offset[0]*offset[0]+offset[2]*offset[2]
                 #if offset[0].norm_sqr() + offset[1].norm_sqr() > radius * radius:
+                current_point = I * self.dx
                 if offset_radius_2d > radius * radius:
-                    if ti.static(surface == self.surface_sticky):
+                    if ti.static(surface == self.surface_sticky) and current_point[1]>(center[1]-0.2):
                             grid_v[I] = ti.Vector.zero(ti.f32, self.dim)
                     else:
                         v = grid_v[I]
