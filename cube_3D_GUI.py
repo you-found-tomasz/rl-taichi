@@ -3,40 +3,27 @@ import numpy as np
 from engine.mpm_solver import MPMSolver
 import os
 
-print(os.environ['VULKAN_SDK'])
-print(os.environ['LD_LIBRARY_PATH'])
-print(os.environ['VK_LAYER_PATH'])
-print(os.environ['PATH'])
-print(os.environ['TAICHI_CMAKE_ARGS'])
-
 write_to_disk = False
 
 # Try to run on GPU
 #ti.init(arch=ti.gpu, device_memory_GB=4.0)
-#ti.init(arch=ti.gpu, device_memory_fraction=0.9)
+ti.init(arch=ti.gpu, device_memory_fraction=0.9)
 #ti.init(arch=ti.vulkan)
-ti.init(arch=ti.cpu)
+#ti.init(arch=ti.cpu)
 import dmsh
 import meshio
 import optimesh
 import numpy as np
 
 geo = dmsh.Circle([2.5, 2.5], 1)
-X, cells = dmsh.generate(geo, 0.1)
-
-# optionally optimize the mesh
+X, cells = dmsh.generate(geo, 0.03)
 X, cells = optimesh.optimize_points_cells(X, cells, "CVT (full)", 1.0e-10, 100)
-
-# visualize the mesh
 dmsh.helpers.show(X, cells, geo)
 
 mpm = MPMSolver(res=(64, 64, 64), size=10, max_num_particles=2 ** 20, use_ggui=True)
-
-mpm.add_sphere_collider_inv(center=(2.5, 4, 2.5),
-                        radius=1,
-                        surface=mpm.surface_sticky)
-
+mpm.add_sphere_collider_inv(center=(2.5, 4, 2.5), radius=1,surface=mpm.surface_sticky)
 mpm.set_gravity((0, -50, 0))
+mesh_particles = np.load('vertices_reduced.npy')
 
 particles = np.array([X[:,0], np.ones(len(X))*4, X[:,1]]).T
 particles_reduced = np.delete(particles, np.arange(0, particles.shape[0], 5), axis=0)

@@ -27,12 +27,39 @@ mesh_triangles2 = mesh.cells_dict['triangle']
 mpm = MPMSolver(res=(64, 64, 64), size=10, max_num_particles=2 ** 20, use_ggui=True)
 mpm.add_sphere_collider_inv(center=(center, height, center), radius=factor-0.5,surface=mpm.surface_sticky)
 #mpm.set_gravity((0, -50, 0))
-mpm.set_gravity((0, -350, 0))
+#mpm.set_gravity((0, -350, 0)) correct
+mpm.set_gravity((0, -550, 0))
+
 mesh_particles = np.load('vertices_reduced.npy')
+mesh_triangles = np.load('faces_reduced.npy')
 #mesh_particles = np.load('2d_mesh_1015.npy')
 #mesh_particles = mesh_particles + np.array([-2.5, -2.5])
-mesh_triangles = np.load('faces_reduced.npy')
 mesh_nr = mesh_particles.shape[0]
+triangles_nr = mesh_triangles.shape[0]
+
+neighbour_list = np.zeros([mesh_nr,1])
+for i in range(mesh_nr):
+    neighbour_indices = np.nonzero(mesh_triangles == i)
+    try:
+        len(neighbour_indices) != 0
+        #neighbour_list.append(neighbour_indices[0][0])
+        neighbour_list[i] = neighbour_indices[0][0]
+    except:
+        #neighbour_list.append(0)
+        neighbour_list[i] = 0
+
+neighbour_list_ti = ti.Matrix.field(n=1, m=1, dtype=ti.f32, shape=(mesh_nr))
+neighbour_list_ti.from_numpy(neighbour_list)
+
+neighbour_indices_ti = ti.Matrix.field(n=3, m=1, dtype=ti.f32, shape=(triangles_nr))
+@ti.kernel
+def base_strain_calc(mpm_x: ti.template(), mesh_triangles: ti.ext_arr()):
+    for I in ti.grouped(updated_length_ti):
+        baseline_length_ti[I][0] = (mpm_x[mesh_triangles[I, 0]] - mpm_x[mesh_triangles[I, 1]]).norm()
+        baseline_length_ti[I][1] = (mpm_x[mesh_triangles[I, 0]] - mpm_x[mesh_triangles[I, 2]]).norm()
+        baseline_length_ti[I][2] = (mpm_x[mesh_triangles[I, 1]] - mpm_x[mesh_triangles[I, 2]]).norm()
+
+
 #tensor_field = ti.Matrix.field(n=3, m=1, dtype=ti.f32, shape=(mesh_nr))
 
 particles = np.array([mesh_particles[:,0]*factor+center, np.ones(len(mesh_particles))*height, mesh_particles[:,1]*factor+center]).T
@@ -42,66 +69,20 @@ mpm.add_particles(particles=mesh.points,material=MPMSolver.material_elastic)
 #mpm.add_ellipsoid(center=[center, 7.5, center], radius=1.2, material=MPMSolver.material_elastic, velocity=[0, 0, 0], sample_density=2**mpm.dim)
 
 #triangluation
-baseline_length = np.ones([mesh_triangles.shape[0],3])
-for i in range(len(mesh_triangles)):
-    baseline_length[i,0] = np.linalg.norm(particles[mesh_triangles[i,0],:] - particles[mesh_triangles[i,1],:])
-    baseline_length[i,1] = np.linalg.norm(particles[mesh_triangles[i,0],:] - particles[mesh_triangles[i,2],:])
-    baseline_length[i,2] = np.linalg.norm(particles[mesh_triangles[i,1],:] - particles[mesh_triangles[i,2],:])
-
+baseline_length_ti = ti.Matrix.field(n=3, m=1, dtype=ti.f32, shape=(triangles_nr))
+@ti.kernel
+def base_strain_calc(mpm_x: ti.template(), mesh_triangles: ti.ext_arr()):
+    for I in ti.grouped(updated_length_ti):
+        baseline_length_ti[I][0] = (mpm_x[mesh_triangles[I, 0]] - mpm_x[mesh_triangles[I, 1]]).norm()
+        baseline_length_ti[I][1] = (mpm_x[mesh_triangles[I, 0]] - mpm_x[mesh_triangles[I, 2]]).norm()
+        baseline_length_ti[I][2] = (mpm_x[mesh_triangles[I, 1]] - mpm_x[mesh_triangles[I, 2]]).norm()
 
 particles = mpm.particle_info()
 particle_nr = particles['position'].shape[0]
 
-
-'''
-#calculate strain
-strain_particles = particles['position'][:mesh_nr]
-tri = Delaunay(strain_particles[:,[0,2]], incremental=True)
-
-neighbour_list = list()
-for i in range(mesh_nr):
-    neighbour_indices = np.nonzero(tri.simplices == i)
-    neighbour_indices2 = np.unique(tri.simplices[neighbour_indices[0], :].reshape(-1,1).squeeze())
-    neighbour_indices3 = np.delete(neighbour_indices2, np.where(neighbour_indices2 == i))
-    neighbour_list.append(neighbour_indices3)
-
-dist_list_baseline = list()
-for i in range(len(neighbour_list)):
-    neighbour_points = neighbour_list[i]
-    dist_neighbour_points = np.linalg.norm(strain_particles[neighbour_indices,:] - strain_particles[i,:], axis=1)
-    dist_list_baseline.append(dist_neighbour_points)
-
-
-dist_list_baseline = list()
-for i in range(mesh_nr):
-    neighbour_indices = np.nonzero(tri.simplices == i)
-    neighbour_indices2 = np.unique(tri.simplices[neighbour_indices[0], :].reshape(-1,1).squeeze())
-    neighbour_indices3 = np.delete(neighbour_indices2, np.where(neighbour_indices2 == i))
-    neighbour_points = strain_particles[neighbour_indices3,:]
-    dist_neighbour_points = np.linalg.norm(neighbour_points - strain_particles[i,:], axis=1)
-    dist_list_baseline.append(dist_neighbour_points)
-
-fig = plt.figure(figsize =(30, 30))
-fig.set_dpi(150.0)
-plt.triplot(strain_particles[:,0], strain_particles[:,2], tri.simplices)
-plt.plot(neighbour_points[:,0], neighbour_points[:,2], 'o')
-plt.plot(strain_particles[i,0], strain_particles[i,2], 'x')
-plt.show()
-i=2
-'''
-'''
-idx_list = list()
-for i in range(len(mesh_triangles)):
-    particle_triangle = np.array([mesh_particles[mesh_triangles[i, 0]], mesh_particles[mesh_triangles[i, 1]], mesh_particles[mesh_triangles[i, 2]]])
-    #particle_triangle = np.array([mesh_particles[tri.simplices[i, 0]], mesh_particles[tri.simplices[i, 1]], mesh_particles[tri.simplices[i, 2]]])
-    particle_array = particles['position'][:, [0, 2]]
-    idx = (np.linalg.norm((particle_array[:, :, None] - particle_triangle.T), axis=1)).argmin(axis=0)
-    idx_list.append(idx)
-idx_array = np.array(idx_list).reshape(-1,1).squeeze()
-'''
-
 #triangles_final = np.concatenate([mesh_triangles2, mesh_triangles])
 triangles_final = np.concatenate([mesh_triangles])
+
 idx_array = np.array(triangles_final).reshape(-1,1).squeeze()
 idx_array_tai = ti.field(ti.i32, shape=len(idx_array))
 idx_array_tai.from_numpy(idx_array)
@@ -123,12 +104,45 @@ def set_color(ti_color: ti.template(), material_color: ti.ext_arr(), ti_material
             color_4d[d] = material_color[material_id, d]
         ti_color[I] = color_4d
 
+#strain_ti = ti.Matrix.field(n=3, m=1, dtype=ti.f32, shape=(mesh_triangles.shape[0]))
+strain_ti = ti.Matrix.field(n=3, m=1, dtype=ti.f32, shape=(triangles_nr))
+updated_length_ti = ti.Matrix.field(n=3, m=1, dtype=ti.f32, shape=(triangles_nr))
+strain_ti_particles = ti.Matrix.field(n=3, m=1, dtype=ti.f32, shape=(mesh_nr))
 @ti.kernel
-def set_color2(ti_color: ti.template(), strain: ti.ext_arr()):
-    i = 0
-    for I in ti.grouped(ti_color):
-        ti_color[I][1] = ti_color[I][1] + (strain[i] -1)
-        i += 1
+def strain_calc(mpm_x: ti.template(), mesh_triangles: ti.ext_arr(), triangles: ti.template()):
+    for I in ti.grouped(triangles):
+        updated_length_ti[I][0] = (mpm_x[mesh_triangles[I, 0]] - mpm_x[mesh_triangles[I, 1]]).norm()
+        updated_length_ti[I][1] = (mpm_x[mesh_triangles[I, 0]] - mpm_x[mesh_triangles[I, 2]]).norm()
+        updated_length_ti[I][2] = (mpm_x[mesh_triangles[I, 1]] - mpm_x[mesh_triangles[I, 2]]).norm()
+        strain_ti[I] = updated_length_ti[I] / baseline_length_ti[I]
+
+#triangle_color_ti = ti.Matrix.field(n=4, m=1, dtype=ti.f32, shape=(mesh_triangles.shape[0]))
+triangle_color_ti = ti.Matrix.field(n=4, m=1, dtype=ti.f32, shape=(mesh_nr))
+
+@ti.kernel
+def set_color2(triangle_color_ti: ti.template(), strain_ti:ti.template(), triangles: ti.template()):
+    for I in ti.grouped(triangle_color_ti):
+        color_4d = ti.Vector([1.0, 1.0, 1.0, 1.0])
+        #strain = strain_ti[neighbour_list[I]]
+        color_4d[1] = color_4d[1] - ti.min(ti.max((strain_ti[neighbour_list_ti[I]][0] - 1) * 2, (strain_ti[neighbour_list_ti[I]][1] - 1) * 2, (strain_ti[neighbour_list_ti[I]][2] - 1) * 2, 0), 1.0)
+        color_4d[2] = color_4d[2] - ti.min(ti.max((strain_ti[neighbour_list_ti[I]][0] - 1) * 2, (strain_ti[neighbour_list_ti[I]][1] - 1) * 2, (strain_ti[neighbour_list_ti[I]][2] - 1) * 2, 0), 1.0)
+        print(ti.min(ti.max((strain_ti[neighbour_list_ti[I]][0] - 1) * 4, (strain_ti[neighbour_list_ti[I]][1] - 1) * 4, (strain_ti[neighbour_list_ti[I]][2] - 1) * 4, 0), 1.0))
+        #if (ti.max(strain_ti[I][1]) - 1) > 0.05:
+        #    color_4d = ti.Vector([1.0, 0.0, 0.0, 1.0])
+        #    print(ti.max(strain_ti[I][1]))
+        #color_4d[0] = color_4d[0] + 0.5
+        #color_4d[1] = color_4d[1] - ti.min(ti.max((strain_ti[I][0]-1)*8,(strain_ti[I][1]-1)*8,(strain_ti[I][2]-1)*8,0),1.0)
+        #color_4d[2] = color_4d[2] - ti.min(ti.max((strain_ti[I][0]-1)*8,(strain_ti[I][1]-1)*8,(strain_ti[I][2]-1)*8,0),1.0)
+        #print(ti.min(ti.max((strain_ti[I][0]-1)*8,(strain_ti[I][1]-1)*8,(strain_ti[I][2]-1)*8,0),1.0))
+        #print(ti.min((ti.max(strain_ti[I][0]) - 1)*2, 0.5))
+        #print(ti.max(strain_ti[I][1]))
+        #color_4d = ti.Vector([1.0, 0.0, 0.0, 1.0])
+        #if ti.max(strain_ti[I][1]) > 1.2:
+            #color_4d = ti.Vector([1.0, 0.0, 0.0, 1.0])
+            #color_4d[1] = color_4d[1] + ti.max(strain_ti[I][1]) - 1
+        #print(I)
+        triangle_color_ti[I] = color_4d
+
 
 tensor_field = ti.Matrix.field(n=3, m=1, dtype=ti.f32, shape=(mesh_nr))
 tensor_field2 = ti.Matrix.field(n=3, m=1, dtype=ti.f32, shape=(particle_nr-mesh_nr))
@@ -151,21 +165,21 @@ camera.position(-6.0, 8, 5.0)
 camera.lookat(5, 2, 5)
 camera.fov(55)
 particles_radius = 0.05
-
+base_strain_calc(mpm.x, mesh_triangles)
 
 def render():
     camera.track_user_inputs(window, movement_speed=0.2, hold_key=ti.ui.RMB)
     scene.set_camera(camera)
-
     scene.ambient_light((0, 0, 0))
-    strain = calculate_strain()
-    set_color(mpm.color_with_alpha, material_type_colors, mpm.material)
-    #set_color2(mpm.color_with_alpha, strain)
 
     split(mpm.x)
-    #scene.particles(tensor_field2, radius=particles_radius)
-    scene.particles(mpm.x, radius=particles_radius, per_vertex_color=mpm.color_with_alpha)
+    strain_calc(mpm.x, mesh_triangles, tensor_field)
+    set_color2(triangle_color_ti, strain_ti, tensor_field)
+
+    scene.particles(tensor_field2, radius=particles_radius)
+    #scene.particles(mpm.x, radius=particles_radius, per_vertex_color=mpm.color_with_alpha)
     #scene.mesh(tensor_field2, indices=idx_array_tai2, two_sided=False)
+    scene.mesh(tensor_field, indices=idx_array_tai, per_vertex_color=triangle_color_ti, two_sided=False)
     #scene.mesh(tensor_field, indices=idx_array_tai, two_sided=False)
     #scene.mesh(mpm.x, two_sided=True)
 
@@ -176,24 +190,6 @@ def render():
 
     canvas.scene(scene)
 
-def calculate_strain():
-    particles = mpm.particle_info()
-    strain_particles = particles['position'][:mesh_nr]
-
-    strain = np.ones([particles['position'].shape[0] ,1]).squeeze()
-    '''
-    for i in range(mesh_nr):
-        hello = np.nonzero(tri.simplices == i)
-        neighbour_points = strain_particles[tri.simplices[hello[0], :].reshape(-1, 1).squeeze()]
-        dist_neighbour_points = np.linalg.norm(neighbour_points - strain_particles[i, :], axis=1)
-        strain[i] = np.nanmax(dist_neighbour_points / dist_list_baseline[i])
-    '''
-    for i in range(mesh_nr):
-        neighbour_points = neighbour_list[i]
-        dist_neighbour_points = np.linalg.norm(strain_particles[neighbour_points,:] - strain_particles[i,:], axis=1)
-        strain[i] = np.nanmax(dist_neighbour_points / dist_list_baseline[i].reshape(-1,1))
-
-    return strain
 
 def show_options():
     global particles_radius
