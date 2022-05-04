@@ -15,7 +15,7 @@ class Particle_Simulator:
         mesh_file = "2d_mesh_1015.npy"
         if not exists(mesh_file):
             geo = dmsh.Circle(self.center, 1)
-            precision = 0.11
+            precision = 0.15
             self.X, cells = dmsh.generate(geo, precision)
             plt.scatter(self.X[:,0], self.X[:,1])
             plt.show()
@@ -30,25 +30,32 @@ class Particle_Simulator:
 
         X_centered = self.X - self.center
         self.first_quarter_index = np.where(np.logical_and(X_centered[:,0] >= 0, X_centered[:,1] >= 0))[0]
+        self.first_quarter = self.X[self.first_quarter_index,:]
+        self.counter_max = self.first_quarter.shape[0]
+        self.counter = 0
+        self.particle_indices = np.ones(self.counter_max)
 
-        # Try to run on GPU
         #ti.init(arch=ti.gpu, device_memory_GB=2.0)
         #ti.init(arch=ti.gpu, device_memory_fraction=0.9)
         #ti.init(arch=ti.vulkan)
-        #ti.init(arch=ti.gpu, device_memory_fraction=0.35)
         self.write_to_disk = False
         ti.init(arch=ti.cpu, kernel_profiler = True, debug=True)
         self.gui = ti.GUI("Taichi Elements", res=512, background_color=0x112F41)
         self.mpm = MPMSolver(res=(64, 64, 64), size=10, max_num_particles=2 ** 15, use_ggui=False, use_g2p2g=False)
         self.mpm.add_sphere_collider_inv(center=(2.5, 4, 2.5), radius=1, surface=self.mpm.surface_sticky)
-        self.mpm.set_gravity((0, -150, 0))
+        self.mpm.set_gravity((0, -200, 0))
         self.mpm.step(4e-3, print_stat=False)
 
-    def simulate(self, particle_indices):
+    def update(self, index, action):
+        self.particle_indices[index] = action
+        #print(self.first_quarter[index,:])
+        state = self.first_quarter[index,:]
+        return np.ndarray(shape=(2,), buffer=np.array([state[0], state[1]]))#, dtype=np.float32)
 
-        #particle_indices = np.ones(particle_indices.shape[0])
-        first_quarter = self.X[self.first_quarter_index,:]
-        first_quarter_reduced = first_quarter[np.where(particle_indices)[0],:]
+    def simulate(self):
+        #first_quarter_reduced = self.first_quarter[np.where(self.particle_indices)[0],:]
+        first_quarter_reduced = self.first_quarter
+        first_quarter_reduced = self.first_quarter[np.where(self.particle_indices)[0],:]
         second_quarter_reduced = -first_quarter_reduced + self.center + self.center
         third_quarter_reduced = np.array([first_quarter_reduced[:,0], -first_quarter_reduced[:,1] + self.center[1] + self.center[1]]).T
         forth_quarter_reduced = np.array([-first_quarter_reduced[:,0] + self.center[1] + self.center[1], first_quarter_reduced[:,1]]).T
@@ -68,7 +75,7 @@ class Particle_Simulator:
             np_x = particles['position'] / 10.0
             min_z = np.min(np_x[:,1])
             if min_z < 0.28:
-                #print(min_z)
+                print("broken")
                 self.cloth_broken = True
                 break
             min_list.append(min_z)

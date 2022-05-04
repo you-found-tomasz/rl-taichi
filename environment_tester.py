@@ -15,17 +15,17 @@ n_step = 10000
 
 
 config = ppo.DEFAULT_CONFIG.copy()
-agent = ppo.PPOTrainer(config, env=select_env)
-agent.restore('tmp/exa/checkpoint_000023/checkpoint-23')
+#agent = ppo.PPOTrainer(config, env=select_env)
+#agent.restore('tmp/exa/checkpoint_000023/checkpoint-23')
 
 for step in range(n_step):
-    #action = env.action_space.sample()
-    action = agent.compute_action(state)
+    action = env.action_space.sample()
+    #action = agent.compute_action(state)
     state, reward, done, info = env.step(action)
     if info['cloth'] == True:
         #print("cloth broken")
         state = env.reset()
-        np.save('finished_state.npy', env.previous_state_full)
+        #np.save('finished_state.npy', env.previous_state_full)
         break
     sum_reward += reward
     env.render(action)

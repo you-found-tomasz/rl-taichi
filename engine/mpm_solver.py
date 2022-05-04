@@ -201,7 +201,7 @@ class MPMSolver:
         self.padding = padding
 
         # Young's modulus and Poisson's ratio
-        self.E, self.nu = 1e7 * size * E_scale, 0.2  #self.E, self.nu = 1e6 * size * E_scale,  0.2
+        self.E, self.nu = 1e6 * size * E_scale, 0.2  #self.E, self.nu = 1e6 * size * E_scale,  0.2
         # Lame parameters
         self.mu_0, self.lambda_0 = self.E / (
             2 * (1 + self.nu)), self.E * self.nu / ((1 + self.nu) *

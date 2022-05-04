@@ -46,11 +46,12 @@ def main ():
     config["batch_mode"] = "truncate_episodes"
     config["num_envs_per_worker"] = 1
     config["ignore_worker_failures"] = True
+    config["disable_env_checking"] = True
 
     agent = ppo.PPOTrainer(config, env=select_env)
 
     status = "{:2d} reward {:6.2f}/{:6.2f}/{:6.2f} len {:4.2f} saved {}"
-    n_iter = 1
+    n_iter = 100
 
     # train a policy with RLlib using PPO
     for n in range(n_iter):

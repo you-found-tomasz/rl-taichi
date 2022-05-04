@@ -6,44 +6,28 @@ import matplotlib.pyplot as plt
 import time
 
 class Taichi_v0 (gym.Env):
-    # possible actions
-    MOVE_LF = 0
-    MOVE_RT = 1
 
-    # possible positions
-    LF_MIN = 1
-    RT_MAX = 10
-
-    # possible rewards
-    REWARD_AWAY = -2
-    REWARD_STEP = -1
     STEPS_UNTIL_SIMULATION = 200
 
     metadata = {
         "render.modes": ["human"]
         }
 
-
     def __init__ (self):
-        # the action space ranges [0, 1] where:
-        #  `0` move left
-        #  `1` move right
+
         self.simulator = Particle_Simulator()
-        self.RT_MAX = int(self.simulator.first_quarter_index.shape[0])
-        self.action_space = gym.spaces.Discrete(self.RT_MAX)
-
-        # NB: Ray throws exceptions for any `0` value Discrete
-        # observations so we'll make position a 1's based value
-        #self.observation_space = gym.spaces.Discrete(self.RT_MAX)
-        self.observation_space = gym.spaces.MultiBinary(self.RT_MAX)
-        #self.observation_space = gym.spaces.Box(low=0, high=1, shape=(self.RT_MAX, 1), dtype=np.int)
-        #self.observation_space = gym.spaces.Tuple((gym.spaces.Discrete(self.RT_MAX), gym.spaces.MultiBinary(self.RT_MAX, 1)))
-
-        # possible positions to chose on `reset()`
-        self.goal = int((self.LF_MIN + self.RT_MAX - 1) / 2)
+        self.RT_MAX = int(self.simulator.first_quarter.shape[0])
+        self.action_space = gym.spaces.Discrete(2)
+        #self.observation_space = gym.spaces.Box(low=0, high=self.RT_MAX, shape=(1,), dtype=np.int)
+        self.index_max = self.simulator.counter_max
         self.seed()
         self.reset()
 
+        self.x_coordinate = 1000
+        self.y_coordinate = 1000
+        self.low = np.array([-self.x_coordinate, -self.y_coordinate], dtype=np.float64)
+        self.high = np.array([self.x_coordinate, self.y_coordinate], dtype=np.float64)
+        self.observation_space = gym.spaces.Box(self.low, self.high, dtype=np.float64)
 
     def reset (self):
         """
@@ -53,16 +37,19 @@ class Taichi_v0 (gym.Env):
         -------
         observation (object): the initial observation of the space.
         """
-        self.count = 0
-        self.state = np.ones(self.RT_MAX)
+        #self.state = np.array([0])
+        #self.state = (position, velocity)
 
         # for this environment, state is simply the position
         self.reward = 0
         self.done = False
         self.info = {}
-        self.previous_state = self.state.shape[0]
-        self.previous_state_full = self.state
+        self.previous_state = self.index_max
+        #self.previous_state_full = self.state
+        self.previous_state_full = self.index_max
+        self.index = 0
         print("reset")
+        self.state = np.ndarray(shape=(2,), buffer=np.array([1, 1]))
         return self.state
 
 
@@ -105,29 +92,34 @@ class Taichi_v0 (gym.Env):
 
         elif self.simulator.cloth_broken == True:
             self.done = True;
+            print("cloth broken")
             self.simulator.cloth_broken = False
-            #print("cloth broken")
         else:
             assert self.action_space.contains(action)
-            self.count += 1
-
-            self.state[action] = 0
-            if self.count %self.STEPS_UNTIL_SIMULATION == 0:
-                self.simulator.simulate(self.state)
-                if self.simulator.cloth_broken == False:
-                    self.reward = int(self.previous_state - self.state.sum())
-                    self.previous_state = self.state.sum()
+            if self.index == self.index_max -1:
+                self.done = True
+                self.index = 0
             else:
-                self.reward = 0
-            self.info["dist"] = self.goal
+                self.index += 1
+            self.state = self.simulator.update(self.index, action)
+
+            if self.index % self.STEPS_UNTIL_SIMULATION == 0:
+                self.simulator.simulate()
+                if self.simulator.cloth_broken == False:
+                    self.reward = int(self.previous_state - self.simulator.particle_indices.sum())
+                    self.previous_state = self.simulator.particle_indices.sum()
+            #else:
+                #self.reward = 0
+            #self.info["dist"] = self.goal
             self.info["cloth"] = self.simulator.cloth_broken
-            self.previous_state_full = self.state
+            #self.previous_state_full = self.state
 
         try:
             assert self.observation_space.contains(self.state)
         except AssertionError:
             print("INVALID STATE", self.state)
 
+        #print(self.index, self.reward, self.simulator.particle_indices.sum())
         return [self.state, self.reward, self.done, self.info]
 
 
