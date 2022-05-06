@@ -30,8 +30,8 @@ mpm.add_sphere_collider_inv(center=(center, height, center), radius=factor-0.5,s
 #mpm.set_gravity((0, -350, 0)) correct
 mpm.set_gravity((0, -550, 0))
 
-mesh_particles = np.load('vertices_reduced.npy')
-mesh_triangles = np.load('faces_reduced.npy')
+mesh_particles = np.load('mesh_data/vertices_reduced.npy')
+mesh_triangles = np.load('mesh_data/faces_reduced.npy')
 #mesh_particles = np.load('2d_mesh_1015.npy')
 #mesh_particles = mesh_particles + np.array([-2.5, -2.5])
 mesh_nr = mesh_particles.shape[0]

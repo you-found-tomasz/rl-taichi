@@ -33,11 +33,11 @@ def main ():
 
     # configure the environment and create agent
     config = ppo.DEFAULT_CONFIG.copy()
-    config["log_level"] = "WARN"
+    config["log_level"] = "ERROR"
     config["num_cpus_per_worker"] = 1
     config["num_workers"] = 1
     config["framework"] = "tf"
-    config["train_batch_size"] = 4000
+    config["train_batch_size"] = 100000
     config["num_gpus"] = 0
     config["num_gpus_per_worker"] = 0
     #config["reuse_actors"] = True

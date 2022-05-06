@@ -7,7 +7,8 @@ import time
 
 class Taichi_v0 (gym.Env):
 
-    STEPS_UNTIL_SIMULATION = 200
+    STEPS_UNTIL_SIMULATION = 1015
+    STEPS_UNTIL_SIMULATION = 100
 
     metadata = {
         "render.modes": ["human"]
@@ -16,7 +17,7 @@ class Taichi_v0 (gym.Env):
     def __init__ (self):
 
         self.simulator = Particle_Simulator()
-        self.RT_MAX = int(self.simulator.first_quarter.shape[0])
+        #self.RT_MAX = int(self.simulator.first_quarter.shape[0])
         self.action_space = gym.spaces.Discrete(2)
         #self.observation_space = gym.spaces.Box(low=0, high=self.RT_MAX, shape=(1,), dtype=np.int)
         self.index_max = self.simulator.counter_max
@@ -47,7 +48,7 @@ class Taichi_v0 (gym.Env):
         self.previous_state = self.index_max
         #self.previous_state_full = self.state
         self.previous_state_full = self.index_max
-        self.index = 0
+        self.index = int(0)
         print("reset")
         self.state = np.ndarray(shape=(2,), buffer=np.array([1, 1]))
         return self.state
@@ -91,13 +92,24 @@ class Taichi_v0 (gym.Env):
             print("EPISODE DONE!!!")
 
         elif self.simulator.cloth_broken == True:
-            self.done = True;
+            self.done = True
             print("cloth broken")
             self.simulator.cloth_broken = False
+            self.simulator.reset()
+            #self.simulator.kill()
         else:
             assert self.action_space.contains(action)
+            self.index = np.random.randint(1015, size=1)[0]
+            self.state = self.simulator.update(self.index, action)
+
+            if self.index % 300 == 0:
+                self.simulator.simulate()
+                if self.simulator.cloth_broken == False:
+                    self.reward = int(self.previous_state - self.simulator.particle_indices.sum())
+                    self.previous_state = self.simulator.particle_indices.sum()
+
+            '''
             if self.index == self.index_max -1:
-                self.done = True
                 self.index = 0
             else:
                 self.index += 1
@@ -108,6 +120,7 @@ class Taichi_v0 (gym.Env):
                 if self.simulator.cloth_broken == False:
                     self.reward = int(self.previous_state - self.simulator.particle_indices.sum())
                     self.previous_state = self.simulator.particle_indices.sum()
+            '''
             #else:
                 #self.reward = 0
             #self.info["dist"] = self.goal
@@ -147,6 +160,7 @@ class Taichi_v0 (gym.Env):
         Args:
             mode (str): the mode to render with
         """
+        '''
         first_quarter = self.simulator.X[self.simulator.first_quarter_index,:]
         first_quarter_reduced = first_quarter[np.where(self.state)[0],:]
         second_quarter_reduced = -first_quarter_reduced + self.simulator.center + self.simulator.center
@@ -158,7 +172,8 @@ class Taichi_v0 (gym.Env):
         plt.scatter(forth_quarter_reduced[:,0], forth_quarter_reduced[:,1])
         plt.savefig("results_meshes/mesh_{}.png".format(time.time()), dpi=150)
         plt.clf()
-
+        '''
+        print("no render")
         #s = "position: {:2d}  reward: {:2d}  info: {}"
         #print(s.format(self.state, self.reward, self.info))
         #self.simulator.simulate(self.state)

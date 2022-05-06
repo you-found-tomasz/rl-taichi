@@ -14,7 +14,7 @@ sum_reward = 0
 n_step = 10000
 
 
-config = ppo.DEFAULT_CONFIG.copy()
+#config = ppo.DEFAULT_CONFIG.copy()
 #agent = ppo.PPOTrainer(config, env=select_env)
 #agent.restore('tmp/exa/checkpoint_000023/checkpoint-23')
 
