@@ -12,7 +12,7 @@ class Particle_Simulator:
 
     def __init__(self):
         self.center = [2.5, 2.5]
-        mesh_file = "2d_mesh_1015.npy"
+        mesh_file = "mesh_data/2d_mesh_1015.npy"
         if not exists(mesh_file):
             geo = dmsh.Circle(self.center, 1)
             precision = 0.15
